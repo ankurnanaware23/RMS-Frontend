@@ -26,19 +26,13 @@ export function useRestaurantData() {
     try {
       setLoading(true);
 
-      const [
-        tablesData,
-        menuItemsData,
-        categoriesData,
-        customersData,
-        earningsData,
-      ] = await Promise.all([
-        api.getTables(),
-        api.getMenuItems(),
-        api.getCategories(),
-        api.getCustomers(),
-        api.getEarnings(),
-      ]);
+      const [tablesData, menuItemsData, categoriesData, earningsData] =
+        await Promise.all([
+          api.getTables(),
+          api.getMenuItems(),
+          api.getCategories(),
+          api.getEarnings(),
+        ]);
 
       const ordersData = await api.getOrders(tablesData);
 
@@ -84,7 +78,6 @@ export function useRestaurantData() {
       setOrders(ordersWithCategory);
       setMenuItems(menuItemsWithCategory);
       setCategories(categoriesWithCounts);
-      setCustomers(customersData);
       setEarnings(earningsData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -109,7 +102,7 @@ export function useRestaurantData() {
         inProgressOrders: orders.filter(
           (order) => order.status === "In Progress"
         ).length,
-        totalCustomers: customers.length,
+        totalCustomers: 0,
         eventCount: 20000,
         totalCategories: categories.length,
         totalDishes: menuItems.length,
