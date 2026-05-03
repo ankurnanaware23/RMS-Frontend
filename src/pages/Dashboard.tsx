@@ -37,7 +37,13 @@ export default function Dashboard() {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const response = await api.get('/api/user/profile/', {
+
+        if (!token) {
+          setUserName("Guest");
+          return;
+        }
+        
+        const response = await api.get('/user/profile/', {
             headers: {
                 Authorization: `Bearer ${token}`
             }
