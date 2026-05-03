@@ -5,6 +5,12 @@ import { logout, useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export const Header = () => {
+  const API = import.meta.env.VITE_BACKEND_API_BASE;
+
+  if (!API) {
+    throw new Error("Missing VITE_BACKEND_API_BASE in environment");
+  }
+  
   const navigate = useNavigate();
   const [userName, setUserName] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,35 +19,47 @@ export const Header = () => {
   const fetchUserData = async () => {
     try {
       const accessToken = localStorage.getItem("accessToken");
-      if (accessToken) {
-        setIsAuthenticated(true);
-        const response = await fetch("/api/user/profile/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+
+      if (!accessToken) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      const response = await fetch(`${API}/user/profile/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
         if (response.status === 401) {
           logout();
           navigate("/signin");
           toast("Your session has expired. Please log in again. 🔑");
-          return;
         }
-        if (response.ok) {
-          const data = await response.json();
-          setUserName(`${data.first_name} ${data.last_name}`);
-        } else {
-          console.error("Failed to fetch user data");
-        }
+        setIsAuthenticated(false);
+        return;
       }
+
+      const data = await response.json();
+
+      setUserName(`${data.first_name} ${data.last_name}`);
+
+      setIsAuthenticated(true);
     } catch (error) {
       console.error("Failed to fetch user data", error);
+      setIsAuthenticated(false);
     }
   };
 
   useEffect(() => {
     fetchUserData();
 
-    const handleProfileUpdated = () => fetchUserData();
+    const handleProfileUpdated = () => {
+      if (localStorage.getItem("accessToken")) {
+        fetchUserData();
+      }
+    };
 
     window.addEventListener('profileUpdated', handleProfileUpdated);
 

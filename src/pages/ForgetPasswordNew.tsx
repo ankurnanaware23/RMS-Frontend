@@ -34,10 +34,15 @@ const ForgotPasswordNew = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.state?.email) {
-      setEmail(location.state.email);
+    if (!location.state?.email) return;
+
+    setEmail(location.state.email);
+
+    const timer = setTimeout(() => {
       handleEmailSubmit(null, location.state.email);
-    }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [location.state?.email]);
 
   const handleEmailSubmit = async (e: React.FormEvent | null, userEmail = email) => {
@@ -45,7 +50,7 @@ const ForgotPasswordNew = () => {
     setLoading(true);
 
     try {
-      await api.post("/api/user/password-reset/", { email: userEmail });
+      await api.post("/user/password-reset/", { email: userEmail });
       toast.success("Password reset code sent to your email");
       setStep(2);
     } catch (error: any) {
@@ -59,7 +64,7 @@ const ForgotPasswordNew = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/api/user/otp-verification/", { email, otp });
+      await api.post("/user/otp-verification/", { email, otp });
       toast.success("OTP verified successfully");
       setStep(3);
     } catch (error: any) {
@@ -77,7 +82,7 @@ const ForgotPasswordNew = () => {
     }
     setLoading(true);
     try {
-      await api.post("/api/user/password-change/", {
+      await api.post("/user/password-change/", {
         otp,
         email,
         password,
@@ -94,7 +99,7 @@ const ForgotPasswordNew = () => {
   const handleResendCode = async () => {
     setLoading(true);
     try {
-      await api.post("/api/user/password-reset/", { email });
+      await api.post("/user/password-reset/", { email });
       toast.success("Password reset code sent to your email");
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Something went wrong");

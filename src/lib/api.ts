@@ -27,11 +27,14 @@ const ENDPOINTS = {
   earnings: "/earnings/",
 };
 
+/* ================= AXIOS INSTANCE ================= */
 const api = axios.create({
-  baseURL: API_ORIGIN,
+  baseURL: API_BASE_URL,
 });
 
 export default api;
+
+/* ================= AUTH ================= */
 
 export const signIn = async (credentials: any) => {
   const response = await fetch(`${API_BASE_URL}${ENDPOINTS.auth.token}`, {
@@ -57,10 +60,7 @@ export const signUp = async (userData: any) => {
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      data?.email?.[0] ||
-      data?.detail ||
-      "Sign up failed";
+    const message = data?.email?.[0] || data?.detail || "Sign up failed";
     throw new Error(message);
   }
   return data;
@@ -69,7 +69,7 @@ export const signUp = async (userData: any) => {
 export const updateProfile = (data: any) => {
   const token = localStorage.getItem("accessToken");
 
-  return fetch(`/api${ENDPOINTS.auth.profile}`, {
+  return fetch(`${API_BASE_URL}${ENDPOINTS.auth.profile}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -78,6 +78,8 @@ export const updateProfile = (data: any) => {
     body: JSON.stringify(data),
   });
 };
+
+/* ================= TABLES ================= */
 
 type TableApi = {
   id: number | string;
@@ -134,7 +136,13 @@ const toTimeString = (value: string) => {
   if (Number.isNaN(date.getTime())) {
     return undefined;
   }
-  return date.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const toBookingDateTime = (time: string | undefined) => {
@@ -151,7 +159,9 @@ const mapTableFromApi = (table: TableApi): Table => ({
   status: table.status,
   customer: table.customer_name || undefined,
   seats: table.seats,
-  reservationTime: table.booking_time ? toTimeString(table.booking_time) : undefined,
+  reservationTime: table.booking_time
+    ? new Date(table.booking_time).toLocaleString()
+    : undefined,
   createdAt: new Date(),
   updatedAt: new Date(),
 });
@@ -164,7 +174,9 @@ const mapTableToApi = (
   if (data.number !== undefined) payload.table_number = String(data.number);
   if (data.seats !== undefined) payload.seats = data.seats;
   if (data.status !== undefined) payload.status = data.status;
-  if (data.customer !== undefined) payload.customer_name = data.customer ?? null;
+  if (data.customer !== undefined)
+    payload.customer_name = data.customer ?? null;
+
   if (data.reservationTime !== undefined) {
     payload.booking_time = data.reservationTime
       ? toBookingDateTime(data.reservationTime)
@@ -194,12 +206,12 @@ const mapDishFromApi = (dish: DishApi): MenuItem => ({
 });
 
 const mapOrderFromApi = (order: OrderApi, tables: Table[]): Order => {
-  const table = tables.find(item => item.id === String(order.table));
+  const table = tables.find((item) => item.id === String(order.table));
   const tableNumber = table ? table.number : 0;
   const customerInitials = order.customer_name
-    .split(' ')
-    .map(name => name.charAt(0).toUpperCase())
-    .join('');
+    .split(" ")
+    .map((name) => name.charAt(0).toUpperCase())
+    .join("");
 
   return {
     id: String(order.id),
@@ -207,13 +219,13 @@ const mapOrderFromApi = (order: OrderApi, tables: Table[]): Order => {
     customerInitials,
     tableNumber,
     tableId: order.table ? String(order.table) : undefined,
-    items: order.items.map(item => ({
+    items: order.items.map((item) => ({
       id: String(item.id),
       dishId: String(item.dish),
       name: item.dish_name,
       price: Number(item.price),
       quantity: item.quantity,
-      category: '',
+      category: "",
     })),
     status: order.status,
     totalAmount: Number(order.total_amount),
@@ -227,22 +239,21 @@ const mapEarningFromApi = (earning: EarningApi): Earning => ({
   id: String(earning.id),
   orderId: earning.order ? String(earning.order) : undefined,
   date: earning.date || undefined,
-  completedAt: earning.completed_at ? new Date(earning.completed_at) : undefined,
+  completedAt: earning.completed_at
+    ? new Date(earning.completed_at)
+    : undefined,
   amount: Number(earning.amount),
 });
 
 export const getTables = async (): Promise<Table[]> => {
-  const response = await api.get(`${API_BASE_URL}${ENDPOINTS.tables}`);
+  const response = await api.get(ENDPOINTS.tables);
   return response.data.map(mapTableFromApi);
 };
 
 export const addTable = async (
   tableData: Omit<Table, "id" | "createdAt" | "updatedAt">
 ): Promise<Table> => {
-  const response = await api.post(
-    `${API_BASE_URL}${ENDPOINTS.tables}`,
-    mapTableToApi(tableData)
-  );
+  const response = await api.post(ENDPOINTS.tables, mapTableToApi(tableData));
   return mapTableFromApi(response.data);
 };
 
@@ -251,14 +262,14 @@ export const updateTable = async (
   updates: Partial<Omit<Table, "id" | "createdAt" | "updatedAt">>
 ): Promise<Table> => {
   const response = await api.patch(
-    `${API_BASE_URL}${ENDPOINTS.tableById(tableId)}`,
+    ENDPOINTS.tableById(tableId),
     mapTableToApi(updates)
   );
   return mapTableFromApi(response.data);
 };
 
 export const deleteTable = async (tableId: string): Promise<void> => {
-  await api.delete(`${API_BASE_URL}${ENDPOINTS.tableById(tableId)}`);
+  await api.delete(ENDPOINTS.tableById(tableId));
 };
 
 export const bookTable = async (
@@ -268,24 +279,21 @@ export const bookTable = async (
 ): Promise<Table> => {
   const bookingTime = new Date(reservationDateTime).toISOString();
 
-  const response = await api.post(
-    `${API_BASE_URL}${ENDPOINTS.tableBook(tableId)}`,
-    {
+  const response = await api.post(ENDPOINTS.tableBook(tableId), {
     customer_name: customerName,
     booking_time: bookingTime,
-    }
-  );
+  });
 
   return mapTableFromApi(response.data);
 };
 
 export const getCategories = async (): Promise<Category[]> => {
-  const response = await api.get(`${API_BASE_URL}${ENDPOINTS.categories}`);
+  const response = await api.get(ENDPOINTS.categories);
   return response.data.map(mapCategoryFromApi);
 };
 
 export const getMenuItems = async (): Promise<MenuItem[]> => {
-  const response = await api.get(`${API_BASE_URL}${ENDPOINTS.dishes}`);
+  const response = await api.get(ENDPOINTS.dishes);
   return response.data.map(mapDishFromApi);
 };
 
@@ -299,26 +307,26 @@ export const addMenuItem = async (
     category: itemData.categoryId,
     is_veg: itemData.isVeg ?? true,
   };
-  const response = await api.post(`${API_BASE_URL}${ENDPOINTS.dishes}`, payload);
+  const response = await api.post(ENDPOINTS.dishes, payload);
   return mapDishFromApi(response.data);
 };
 
 export const addCategory = async (
   categoryData: Omit<Category, "id" | "createdAt" | "updatedAt">
 ): Promise<Category> => {
-  const response = await api.post(`${API_BASE_URL}${ENDPOINTS.categories}`, {
+  const response = await api.post(ENDPOINTS.categories, {
     name: categoryData.name,
   });
   return mapCategoryFromApi(response.data);
 };
 
 export const getOrders = async (tables: Table[]): Promise<Order[]> => {
-  const response = await api.get(`${API_BASE_URL}${ENDPOINTS.orders}`);
+  const response = await api.get(ENDPOINTS.orders);
   return response.data.map((order: OrderApi) => mapOrderFromApi(order, tables));
 };
 
 export const getEarnings = async (): Promise<Earning[]> => {
-  const response = await api.get(`${API_BASE_URL}${ENDPOINTS.earnings}`);
+  const response = await api.get(ENDPOINTS.earnings);
   return response.data.map(mapEarningFromApi);
 };
 
@@ -330,18 +338,18 @@ export const addOrder = async (
     customer_name: orderData.customerName,
     status: orderData.status,
     order_type: orderData.orderType,
-    items: orderData.items.map(item => ({
+    items: orderData.items.map((item) => ({
       dish: Number(item.dishId || item.id),
       quantity: item.quantity,
     })),
   };
 
   try {
-    const response = await api.post(`${API_BASE_URL}${ENDPOINTS.orders}`, payload);
+    const response = await api.post(ENDPOINTS.orders, payload);
     return mapOrderFromApi(response.data, []);
   } catch (error: any) {
     if (error?.response?.data) {
-      console.error('Order create error:', error.response.data);
+      console.error("Order create error:", error.response.data);
     }
     throw error;
   }
@@ -349,9 +357,9 @@ export const addOrder = async (
 
 export const updateOrderStatus = async (
   orderId: string,
-  status: Order['status']
+  status: Order["status"]
 ): Promise<void> => {
-  await api.patch(`${API_BASE_URL}${ENDPOINTS.orderById(orderId)}`, { status });
+  await api.patch(ENDPOINTS.orderById(orderId), { status });
 };
 
 export const updateOrderItems = async (
@@ -359,49 +367,16 @@ export const updateOrderItems = async (
   items: { dishId: string; quantity: number }[]
 ): Promise<Order> => {
   const payload = {
-    items: items.map(item => ({
+    items: items.map((item) => ({
       dish: Number(item.dishId),
       quantity: item.quantity,
     })),
   };
 
-  const response = await api.patch(
-    `${API_BASE_URL}${ENDPOINTS.orderById(orderId)}`,
-    payload
-  );
+  const response = await api.patch(ENDPOINTS.orderById(orderId), payload);
   return mapOrderFromApi(response.data, []);
 };
 
 export const deleteOrder = async (orderId: string): Promise<void> => {
-  await api.delete(`${API_BASE_URL}${ENDPOINTS.orderById(orderId)}`);
-};
-
-// Customers are still mocked for now.
-
-let initialCustomers: Customer[] = [
-  {
-    id: "1",
-    name: "Ankur Nanaware",
-    email: "ankur@example.com",
-    phone: "123-456-7890",
-    totalOrders: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "098-765-4321",
-    totalOrders: 3,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export const getCustomers = async (): Promise<Customer[]> => {
-  await sleep(500);
-  return initialCustomers;
+  await api.delete(ENDPOINTS.orderById(orderId));
 };

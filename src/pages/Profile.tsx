@@ -17,6 +17,8 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 
+const API = import.meta.env.VITE_BACKEND_API_BASE; 
+
 const profileFormSchema = z.object({
   first_name: z.string().min(2, {
     message: "First name must be at least 2 characters.",
@@ -54,23 +56,40 @@ export default function Profile() {
   const fetchUserData = async () => {
     try {
       const accessToken = localStorage.getItem("accessToken");
-      const response = await fetch("/api/user/profile/", {
+
+      if (!accessToken) {
+        logout();
+        navigate("/signin");
+        return;
+      }
+      
+      const response = await fetch(`${API}/user/profile/`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
+
       if (response.status === 401) {
         logout();
         navigate("/signin");
         toast("Your session has expired. Please log in again. 🔑");
         return;
       }
+
       if (!response.ok) {
         throw new Error("Failed to fetch user data");
       }
+
       const data = await response.json();
+
       setUserData(data);
-      form.reset(data);
+
+      form.reset({
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        email: data.email || "",
+        phone: data.phone || "",
+      });;
     } catch (error) {
       toast("Failed to fetch user data ❌");
     }
@@ -83,7 +102,14 @@ export default function Profile() {
   async function onSubmit(data: ProfileFormValues) {
     try {
       const accessToken = localStorage.getItem("accessToken");
-      const response = await fetch("/api/user/profile/", {
+
+      if (!accessToken) {
+        logout();
+        navigate("/signin");
+        return;
+      }
+
+      const response = await fetch(`${API}/user/profile/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -105,10 +131,12 @@ export default function Profile() {
       }
 
       toast("Profile updated successfully ✅");
+
       await fetchUserData();
+
       window.dispatchEvent(new Event('profileUpdated'));
     } catch (error) {
-      toast(`Failed to update profile: ${error}`);
+      toast(`Failed to update profile: ${(error as Error).message}`)
     }
   }
 
