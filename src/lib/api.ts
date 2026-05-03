@@ -320,6 +320,12 @@ export const addCategory = async (
   return mapCategoryFromApi(response.data);
 };
 
+export const getCustomers = async () => {
+  // FIX: added missing API method to match useRestaurantData hook
+  const res = await api.get("/customers/");
+  return res.data;
+};
+
 export const getOrders = async (tables: Table[]): Promise<Order[]> => {
   const response = await api.get(ENDPOINTS.orders);
   return response.data.map((order: OrderApi) => mapOrderFromApi(order, tables));
