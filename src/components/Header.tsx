@@ -1,6 +1,6 @@
 import { User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { logout, useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -16,7 +16,7 @@ export const Header = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { isAdmin } = useAuth();
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const accessToken = localStorage.getItem("accessToken");
 
@@ -50,7 +50,7 @@ export const Header = () => {
       console.error("Failed to fetch user data", error);
       setIsAuthenticated(false);
     }
-  };
+  }, [API, navigate]);
 
   useEffect(() => {
     fetchUserData();
@@ -66,7 +66,7 @@ export const Header = () => {
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdated);
     };
-  }, []);
+  }, [fetchUserData]);
 
   return (
     <header className="bg-background border-b border-border p-4">

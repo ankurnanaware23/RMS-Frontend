@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const API = import.meta.env.VITE_BACKEND_API_BASE; 
 
@@ -53,7 +53,7 @@ export default function Profile() {
     mode: "onChange",
   });
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const accessToken = localStorage.getItem("accessToken");
 
@@ -93,11 +93,11 @@ export default function Profile() {
     } catch (error) {
       toast("Failed to fetch user data ❌");
     }
-  };
+  }, [form, navigate]);
 
   useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
   async function onSubmit(data: ProfileFormValues) {
     try {

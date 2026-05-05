@@ -1,6 +1,6 @@
 import { Table, Order, MenuItem, Category, Customer, Earning } from "@/types";
 
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const API_ORIGIN = import.meta.env.VITE_BACKEND_ORIGIN;
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_BASE;
@@ -32,11 +32,41 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 export default api;
 
 /* ================= AUTH ================= */
 
-export const signIn = async (credentials: any) => {
+type SignInCredentials = {
+  email: string;
+  password: string;
+};
+
+type SignUpData = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  password2: string;
+};
+
+type ProfileUpdateData = {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+};
+
+export const signIn = async (credentials: SignInCredentials) => {
   const response = await fetch(`${API_BASE_URL}${ENDPOINTS.auth.token}`, {
     method: "POST",
     headers: {
@@ -50,7 +80,7 @@ export const signIn = async (credentials: any) => {
   return response.json();
 };
 
-export const signUp = async (userData: any) => {
+export const signUp = async (userData: SignUpData) => {
   const response = await fetch(`${API_BASE_URL}${ENDPOINTS.auth.register}`, {
     method: "POST",
     headers: {
@@ -66,7 +96,7 @@ export const signUp = async (userData: any) => {
   return data;
 };
 
-export const updateProfile = (data: any) => {
+export const updateProfile = (data: ProfileUpdateData) => {
   const token = localStorage.getItem("accessToken");
 
   return fetch(`${API_BASE_URL}${ENDPOINTS.auth.profile}`, {
@@ -347,8 +377,8 @@ export const addOrder = async (
   try {
     const response = await api.post(ENDPOINTS.orders, payload);
     return mapOrderFromApi(response.data, []);
-  } catch (error: any) {
-    if (error?.response?.data) {
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response?.data) {
       console.error("Order create error:", error.response.data);
     }
     throw error;

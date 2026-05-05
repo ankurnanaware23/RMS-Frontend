@@ -8,6 +8,17 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { signUp } from "@/lib/api";
 
+const parseJwt = (token: string) => {
+  try {
+    const payload = token.split(".")[1];
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(base64);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+};
+
 export default function SignUp() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +67,10 @@ export default function SignUp() {
         toast.success("Account created!", {
           description: "You're signed in and ready to go.",
         });
-        navigate("/dashboard");
+
+        const payload = parseJwt(data.access);
+        const isAdmin = Boolean(payload?.is_superuser || payload?.is_staff);
+        navigate(isAdmin ? "/dashboard" : "/menu");
       } else {
         toast.success("Account created!", {
           description: "Welcome to DineEase. Please sign in to continue.",

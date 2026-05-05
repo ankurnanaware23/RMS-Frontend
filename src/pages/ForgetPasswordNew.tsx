@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +22,17 @@ import {
 } from "@radix-ui/react-icons";
 import api from "@/lib/api";
 
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string") {
+      return detail;
+    }
+  }
+
+  return fallback;
+};
+
 const ForgotPasswordNew = () => {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -33,31 +45,35 @@ const ForgotPasswordNew = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    if (!location.state?.email) return;
-
-    setEmail(location.state.email);
-
-    const timer = setTimeout(() => {
-      handleEmailSubmit(null, location.state.email);
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [location.state?.email]);
-
-  const handleEmailSubmit = async (e: React.FormEvent | null, userEmail = email) => {
-    if (e) e.preventDefault();
+  const sendResetCode = useCallback(async (userEmail: string) => {
     setLoading(true);
 
     try {
       await api.post("/user/password-reset/", { email: userEmail });
       toast.success("Password reset code sent to your email");
       setStep(2);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Something went wrong"));
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!location.state?.email) return;
+
+    setEmail(location.state.email);
+
+    const timer = setTimeout(() => {
+      sendResetCode(location.state.email);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [location.state?.email, sendResetCode]);
+
+  const handleEmailSubmit = async (e: React.FormEvent | null, userEmail = email) => {
+    if (e) e.preventDefault();
+    await sendResetCode(userEmail);
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -67,8 +83,8 @@ const ForgotPasswordNew = () => {
       await api.post("/user/otp-verification/", { email, otp });
       toast.success("OTP verified successfully");
       setStep(3);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Invalid OTP");
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Invalid OTP"));
     } finally {
       setLoading(false);
     }
@@ -89,8 +105,8 @@ const ForgotPasswordNew = () => {
       });
       toast.success("Password changed successfully");
       navigate("/signin");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Something went wrong"));
     } finally {
       setLoading(false);
     }
@@ -101,8 +117,8 @@ const ForgotPasswordNew = () => {
     try {
       await api.post("/user/password-reset/", { email });
       toast.success("Password reset code sent to your email");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Something went wrong");
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Something went wrong"));
     } finally {
       setLoading(false);
     }
